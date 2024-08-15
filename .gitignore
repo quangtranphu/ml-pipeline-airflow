@@ -1,0 +1,7 @@
+*.ipynb
+.env
+logs
+plugins
+config
+*.csv
+**__pycache__
