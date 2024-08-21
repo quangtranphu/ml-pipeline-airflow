@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from xgboost import XGBClassifier
 from minio import Minio
 from minio.error import S3Error
 import smtplib
@@ -15,10 +14,11 @@ load_dotenv()
 from sklearn.metrics import roc_auc_score, roc_curve, auc
 import numpy as np
 from sklearn.tree import DecisionTreeClassifier
+import joblib
 
 # Configure the MinIO client with your MinIO server details
 minio_client = Minio(
-    endpoint='localhost:9000',  # Replace with your MinIO server address and port
+    endpoint=os.environ.get("MINIO_ENDPOINT"),  # Replace with your MinIO server address and port
     access_key=os.environ.get('MINIO_ACCESS_KEY_ID'),
     secret_key=os.environ.get('MINIO_SECRET_ACCESS_KEY'),
     secure=False,  # Set to True if using HTTPS
@@ -31,9 +31,9 @@ data_csv_key = "datasets/bank-additional-full.csv"
 # Download the data.csv file from MinIO
 try:
     minio_client.fget_object(bucket_name, data_csv_key, "bank-additional-full.csv")
-    print(f"Downloaded data.csv from MinIO: s3://{bucket_name}/{data_csv_key}")
+    print(f"Downloaded data from MinIO: s3://{bucket_name}/{data_csv_key}")
 except S3Error as e:
-    print(f"Error downloading data.csv from MinIO: {e}")
+    print(f"Error downloading data from MinIO: {e}")
 
 # Load your dataset from the downloaded CSV file
 data = pd.read_csv(".//bank-additional-full.csv", delimiter=";")
@@ -82,7 +82,6 @@ smtp_port = 587
 smtp_server = 'smtp.gmail.com'
 email_from = 'quangtranphu0902@gmail.com'
 email_to = 'quangtranphu0902@gmail.com'
-passwd= 'tkrk oiwq yzau mwqg'
 subject= 'From quangtp with test'
 
 def send_email(file_name, message):
@@ -110,7 +109,7 @@ def send_email(file_name, message):
 
     # Connect with the server
     print("Connecting to server...")
-    TIE_server = smtplib.SMTP(os.environ['SMTP_SERVER'], os.environ['SMTP_PORT'])
+    TIE_server = smtplib.SMTP(smtp_server, smtp_port)
     TIE_server.starttls()
     TIE_server.login(email_from, os.environ['PASSWORD'])
     print("Succesfully connected to server")
@@ -126,7 +125,20 @@ def send_email(file_name, message):
     # Close the port
     TIE_server.quit()
 
+joblib.dump(clf, 'classification_model.pkl')
+
+# Define the object key for the trained model in MinIO
+model_key = "models/classification_model.pkl"
+
+# Upload the trained model to MinIO
+try:
+    minio_client.fput_object(bucket_name, model_key, "classification_model.pkl")
+    print(f"Model uploaded to MinIO: s3://{bucket_name}/{model_key}")
+except S3Error as e:
+    print(f"Error uploading model to MinIO: {e}")
+
 send_email(file_name='model_metrics.txt',
            message=f"""Đây là kết quả model:
 AUC: {roc_auc}
+Model uploaded to MinIO: s3://{bucket_name}/{model_key}
 """)

@@ -9,10 +9,10 @@ default_args = {
 }
 
 with DAG(
-    dag_id='dags_with_postgres_operator_v03',
+    dag_id='dags_with_postgres_operator_v04',
     default_args=default_args,
-    start_date=datetime(2023, 8, 1),
-    schedule_interval='0 0 * * * *'
+    start_date=datetime(2024, 8, 1),
+    schedule_interval=None
 ) as dag:
     task1 = PostgresOperator(
         task_id='create_postgres_table',
